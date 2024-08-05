@@ -7,6 +7,8 @@ from . import items
 
 from .items import *
 from .merchants import *
+from .transactions import *
+from .wallets import *
 
 
 connect_args = {}
