@@ -1,31 +1,32 @@
-# digimon/main.py
+# ssl patch
+from gevent import monkey
 
-import logging
+monkey.patch_all()
+
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 
-from . import config, models, routers
+from . import config
+from . import models
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+from . import routers
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     yield
     if models.engine is not None:
-        await models.close_session()
+        # Close the DB connection
+        await models.sesion_close()
 
-def create_app():
+
+def create_app(settings=None):
+    if not settings:
+        settings = config.get_settings()
+
     app = FastAPI(lifespan=lifespan)
-    models.init_db(config.get_settings())
+
+    models.init_db(settings)
+
     routers.init_router(app)
-    
-    @app.on_event("startup")
-    async def startup_event():
-        logger.info("Starting up...")
-
-    @app.on_event("shutdown")
-    async def shutdown_event():
-        logger.info("Shutting down...")
-
     return app
