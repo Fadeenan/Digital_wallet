@@ -1,32 +1,22 @@
-from typing import Optional
-from pydantic import BaseModel, ConfigDict
-from sqlmodel import Field, SQLModel, Relationship
-from .wallets import Wallet
+# digimon/models/transactions.py
 
-class BaseTransaction(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+from sqlmodel import SQLModel, Field, Relationship
+from typing import Optional
+
+class BaseTransaction(SQLModel):
     wallet_id: int
     amount: float
     type: str  # 'credit' or 'debit'
-    description: str | None = None
+    description: Optional[str] = None
 
-class CreatedTransaction(BaseTransaction):
+class TransactionCreate(BaseTransaction):
     pass
 
-class UpdatedTransaction(BaseTransaction):
-    pass
-
-class Transaction(BaseTransaction):
+class TransactionRead(BaseTransaction):
     id: int
 
-class DBTransaction(Transaction, SQLModel, table=True):
+class DBTransaction(BaseTransaction, table=True):
     __tablename__ = "transactions"
     id: Optional[int] = Field(default=None, primary_key=True)
-    wallet_id: int = Field(default=None, foreign_key="wallets.id")
-
-class TransactionList(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    transactions: list[Transaction]
-    page: int
-    page_size: int
-    size_per_page: int
+    wallet_id: int = Field(foreign_key="wallets.id")
+    

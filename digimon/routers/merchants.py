@@ -1,51 +1,69 @@
-from fastapi import APIRouter, HTTPException
-from typing import Optional
-from sqlmodel import Field, SQLModel, create_engine, Session, select
-from ..models import Merchant, CreatedMerchant, UpdatedMerchant, MerchantList, DBMerchant, engine
+# digimon/routers/merchants.py
+
+from fastapi import APIRouter, Depends, HTTPException
+from typing import Annotated
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
+
+from .. import models, deps
 
 router = APIRouter(prefix="/merchants")
 
-@router.post("")
-async def create_merchant(merchant: CreatedMerchant) -> Merchant:
-    data = merchant.dict()
-    dbmerchant = DBMerchant(**data)
-    with Session(engine) as session:
-        session.add(dbmerchant)
-        session.commit()
-        session.refresh(dbmerchant)
-    return Merchant.from_orm(dbmerchant)
-
 @router.get("")
-async def read_merchants() -> MerchantList:
-    with Session(engine) as session:
-        merchants = session.exec(select(DBMerchant)).all()
-    return MerchantList.from_orm(
-        dict(items=merchants, page_size=0, page=0, size_per_page=0)
-    )
+async def read_merchants(session: Annotated[AsyncSession, Depends(models.get_session)]) -> models.MerchantList:
+    result = await session.exec(select(models.DBMerchant))
+    merchants = result.all()
+
+    return models.MerchantList(merchants=merchants, page=1, size_per_page=50, page_count=1)
+
+@router.post("")
+async def create_merchant(
+    merchant: models.CreatedMerchant,
+    current_user: Annotated[models.User, Depends(deps.get_current_user)],
+    session: Annotated[AsyncSession, Depends(models.get_session)],
+) -> models.Merchant:
+    db_merchant = models.DBMerchant(**merchant.dict(), user_id=current_user.id)
+    session.add(db_merchant)
+    await session.commit()
+    await session.refresh(db_merchant)
+    return models.Merchant.from_orm(db_merchant)
 
 @router.get("/{merchant_id}")
-async def read_merchant(merchant_id: int) -> Merchant:
-    with Session(engine) as session:
-        db_merchant = session.get(DBMerchant, merchant_id)
-        if db_merchant:
-            return Merchant.from_orm(db_merchant)
+async def read_merchant(merchant_id: int, session: Annotated[AsyncSession, Depends(models.get_session)]) -> models.Merchant:
+    db_merchant = await session.get(models.DBMerchant, merchant_id)
+    if db_merchant:
+        return models.Merchant.from_orm(db_merchant)
     raise HTTPException(status_code=404, detail="Merchant not found")
 
 @router.put("/{merchant_id}")
-async def update_merchant(merchant_id: int, merchant: UpdatedMerchant) -> Merchant:
-    data = merchant.dict()
-    with Session(engine) as session:
-        db_merchant = session.get(DBMerchant, merchant_id)
-        db_merchant.sqlmodel_update(data)
-        session.add(db_merchant)
-        session.commit()
-        session.refresh(db_merchant)
-    return Merchant.from_orm(db_merchant)
+async def update_merchant(
+    merchant_id: int,
+    merchant: models.UpdatedMerchant,
+    current_user: Annotated[models.User, Depends(deps.get_current_user)],
+    session: Annotated[AsyncSession, Depends(models.get_session)],
+) -> models.Merchant:
+    db_merchant = await session.get(models.DBMerchant, merchant_id)
+    if not db_merchant:
+        raise HTTPException(status_code=404, detail="Merchant not found")
+
+    db_merchant.update(merchant.dict())
+    session.add(db_merchant)
+    await session.commit()
+    await session.refresh(db_merchant)
+
+    return models.Merchant.from_orm(db_merchant)
 
 @router.delete("/{merchant_id}")
-async def delete_merchant(merchant_id: int) -> dict:
-    with Session(engine) as session:
-        db_merchant = session.get(DBMerchant, merchant_id)
-        session.delete(db_merchant)
-        session.commit()
-    return dict(message="delete success")
+async def delete_merchant(
+    merchant_id: int,
+    current_user: Annotated[models.User, Depends(deps.get_current_user)],
+    session: Annotated[AsyncSession, Depends(models.get_session)],
+) -> dict:
+    db_merchant = await session.get(models.DBMerchant, merchant_id)
+    if not db_merchant:
+        raise HTTPException(status_code=404, detail="Merchant not found")
+
+    await session.delete(db_merchant)
+    await session.commit()
+
+    return {"message": "Merchant deleted successfully"}

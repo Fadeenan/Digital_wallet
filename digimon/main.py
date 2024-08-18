@@ -1,14 +1,31 @@
+# digimon/main.py
+
+import logging
 from fastapi import FastAPI
+from contextlib import asynccontextmanager
 
-from .routers import init_router
-from .models import init_db
+from . import config, models, routers
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
+    if models.engine is not None:
+        await models.close_session()
 
 def create_app():
-    app = FastAPI()
+    app = FastAPI(lifespan=lifespan)
+    models.init_db(config.get_settings())
+    routers.init_router(app)
+    
+    @app.on_event("startup")
+    async def startup_event():
+        logger.info("Starting up...")
 
-    init_db()
-
-    init_router(app)
+    @app.on_event("shutdown")
+    async def shutdown_event():
+        logger.info("Shutting down...")
 
     return app

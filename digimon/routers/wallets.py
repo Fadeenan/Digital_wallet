@@ -1,48 +1,45 @@
-from fastapi import APIRouter, HTTPException
-from sqlmodel import Field, SQLModel, create_engine, Session, select
-from ..models import Wallet, CreatedWallet, UpdatedWallet, WalletList, DBWallet, engine
+# digimon/routers/wallets.py
+
+from fastapi import APIRouter, Depends, HTTPException
+from typing import Annotated
+from sqlmodel.ext.asyncio.session import AsyncSession
+from .. import models, deps
 
 router = APIRouter(prefix="/wallets")
 
-@router.post("")
-async def create_wallet(wallet: CreatedWallet) -> Wallet:
-    data = wallet.dict()
-    dbwallet = DBWallet(**data)
-    with Session(engine) as session:
-        session.add(dbwallet)
-        session.commit()
-        session.refresh(dbwallet)
-    return Wallet.from_orm(dbwallet)
+@router.post("", response_model=models.WalletRead)
+async def create_wallet(
+    wallet: models.WalletCreate,
+    current_user: Annotated[models.User, Depends(deps.get_current_user)],
+    session: Annotated[AsyncSession, Depends(models.get_session)],
+):
+    db_wallet = models.DBWallet(**wallet.dict(), user_id=current_user.id)
+    session.add(db_wallet)
+    await session.commit()
+    await session.refresh(db_wallet)
+    return models.WalletRead.from_orm(db_wallet)
 
-@router.get("")
-async def read_wallets() -> WalletList:
-    with Session(engine) as session:
-        wallets = session.exec(select(DBWallet)).all()
-    return WalletList.from_orm(dict(wallets=wallets, page_size=0, page=0, size_per_page=0))
+@router.get("/{wallet_id}", response_model=models.WalletRead)
+async def read_wallet(wallet_id: int, session: Annotated[AsyncSession, Depends(models.get_session)]) -> models.WalletRead:
+    db_wallet = await session.get(models.DBWallet, wallet_id)
+    if not db_wallet:
+        raise HTTPException(status_code=404, detail="Wallet not found")
+    return models.WalletRead.from_orm(db_wallet)
 
-@router.get("/{wallet_id}")
-async def read_wallet(wallet_id: int) -> Wallet:
-    with Session(engine) as session:
-        db_wallet = session.get(DBWallet, wallet_id)
-        if db_wallet:
-            return Wallet.from_orm(db_wallet)
-    raise HTTPException(status_code=404, detail="Wallet not found")
+@router.put("/{wallet_id}", response_model=models.WalletRead)
+async def update_wallet(
+    wallet_id: int,
+    wallet_update: models.WalletUpdate,
+    session: Annotated[AsyncSession, Depends(models.get_session)],
+) -> models.WalletRead:
+    db_wallet = await session.get(models.DBWallet, wallet_id)
+    if not db_wallet:
+        raise HTTPException(status_code=404, detail="Wallet not found")
 
-@router.put("/{wallet_id}")
-async def update_wallet(wallet_id: int, wallet: UpdatedWallet) -> Wallet:
-    data = wallet.dict()
-    with Session(engine) as session:
-        db_wallet = session.get(DBWallet, wallet_id)
-        db_wallet.sqlmodel_update(data)
-        session.add(db_wallet)
-        session.commit()
-        session.refresh(db_wallet)
-    return Wallet.from_orm(db_wallet)
+    if wallet_update.balance is not None:
+        db_wallet.balance = wallet_update.balance
 
-@router.delete("/{wallet_id}")
-async def delete_wallet(wallet_id: int) -> dict:
-    with Session(engine) as session:
-        db_wallet = session.get(DBWallet, wallet_id)
-        session.delete(db_wallet)
-        session.commit()
-    return dict(message="delete success")
+    session.add(db_wallet)
+    await session.commit()
+    await session.refresh(db_wallet)
+    return models.WalletRead.from_orm(db_wallet)

@@ -1,28 +1,22 @@
+from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional
-from pydantic import BaseModel, ConfigDict
-from sqlmodel import Field, SQLModel, Relationship
+from .users import DBUser
 
-class BaseWallet(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+class BaseWallet(SQLModel):
     user_id: int
     balance: float = 0.0
 
-class CreatedWallet(BaseWallet):
+class WalletCreate(BaseWallet):
     pass
 
-class UpdatedWallet(BaseWallet):
-    pass
-
-class Wallet(BaseWallet):
+class WalletRead(BaseWallet):
     id: int
 
-class DBWallet(Wallet, SQLModel, table=True):
+class WalletUpdate(SQLModel):
+    balance: Optional[float] = None
+
+class DBWallet(BaseWallet, table=True):
     __tablename__ = "wallets"
     id: Optional[int] = Field(default=None, primary_key=True)
-
-class WalletList(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    wallets: list[Wallet]
-    page: int
-    page_size: int
-    size_per_page: int
+    user_id: int = Field(foreign_key="users.id")
+    

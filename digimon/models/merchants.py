@@ -1,41 +1,32 @@
+# digimon/models/merchants.py
+
+from sqlmodel import Field, SQLModel, Relationship
 from typing import Optional
+from . import users
 
-from pydantic import BaseModel, ConfigDict
-from sqlmodel import Field, SQLModel, create_engine, Session, select, Relationship
-
-from . import items
-
-
-class BaseMerchant(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
+class BaseMerchant(SQLModel):
     name: str
-    description: str | None = None
-    tax_id: str | None = None
-
+    description: Optional[str] = None
+    tax_id: Optional[str] = None
+    user_id: Optional[int] = None
 
 class CreatedMerchant(BaseMerchant):
     pass
 
-
 class UpdatedMerchant(BaseMerchant):
     pass
 
-
 class Merchant(BaseMerchant):
     id: int
-    # items: items.Item
 
-
-class DBMerchant(Merchant, SQLModel, table=True):
+class DBMerchant(BaseMerchant, table=True):
     __tablename__ = "merchants"
     id: Optional[int] = Field(default=None, primary_key=True)
-    # items: list["DBItem"] = Relationship(back_populates="merchant")
+    user_id: int = Field(foreign_key="users.id")
+    user: Optional[users.DBUser] = Relationship()
 
-
-class MerchantList(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    items: list[Merchant]
+class MerchantList(SQLModel):
+    merchants: list[Merchant]
     page: int
-    page_size: int
     size_per_page: int
+    page_count: int

@@ -1,44 +1,39 @@
+# digimon/models/items.py
+
+from sqlmodel import Field, SQLModel, Relationship
 from typing import Optional
-
-from pydantic import BaseModel, ConfigDict
-from sqlmodel import Field, SQLModel, create_engine, Session, select, Relationship
 from . import merchants
+from . import users
 
-
-class BaseItem(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
+class BaseItem(SQLModel):
     name: str
-    description: str | None = None
+    description: Optional[str] = None
     price: float = 0.12
-    tax: float | None = None
-    merchant_id: int | None
-
+    tax: Optional[float] = None
+    merchant_id: Optional[int] = None
+    user_id: Optional[int] = None
 
 class CreatedItem(BaseItem):
     pass
 
-
 class UpdatedItem(BaseItem):
     pass
-
 
 class Item(BaseItem):
     id: int
     merchant_id: int
-    # merchant: merchants.Merchant
+    user_id: int
 
-
-class DBItem(Item, SQLModel, table=True):
+class DBItem(BaseItem, table=True):
     __tablename__ = "items"
-    id: int = Field(default=None, primary_key=True)
-    merchant_id: int = Field(default=None, foreign_key="merchants.id")
-    # merchant: merchants.DBMerchant | None = Relationship(back_populates="items")
+    id: Optional[int] = Field(default=None, primary_key=True)
+    merchant_id: int = Field(foreign_key="merchants.id")
+    user_id: int = Field(foreign_key="users.id")
+    merchant: Optional[merchants.DBMerchant] = Relationship()
+    user: Optional[users.DBUser] = Relationship()
 
-
-class ItemList(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+class ItemList(SQLModel):
     items: list[Item]
     page: int
-    page_size: int
     size_per_page: int
+    page_count: int
