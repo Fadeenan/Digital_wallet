@@ -46,12 +46,17 @@ async def create_item(
     current_user: Annotated[models.User, Depends(deps.get_current_user)],
     session: Annotated[AsyncSession, Depends(models.get_session)],
 ) -> models.Item | None:
-    dbitem = models.DBItem.validate_model(item)
+    # Create an instance of the database model directly
+    dbitem = models.DBItem(**item.model_dump())
+    
+    # Add it to the session and commit
     session.add(dbitem)
     await session.commit()
     await session.refresh(dbitem)
 
+    # Return the created item
     return models.Item.from_orm(dbitem)
+
 
 
 @router.get("/{item_id}")

@@ -11,7 +11,7 @@ from .merchants import *
 from .users import *
 from .wallets import *
 from .transactions import *
-from .tokens import *
+
 
 connect_args = {}
 

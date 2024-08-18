@@ -7,7 +7,6 @@ from .users import router as users_router
 from .authentication import router as auth_router
 from .wallets import router as wallets_router
 from .transactions import router as transactions_router
-from .admin import router as admin_router
 
 def init_router(app):
     app.include_router(items_router)
@@ -16,4 +15,3 @@ def init_router(app):
     app.include_router(auth_router)
     app.include_router(wallets_router)
     app.include_router(transactions_router)
-    app.include_router(admin_router)

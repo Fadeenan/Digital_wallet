@@ -13,11 +13,17 @@ async def create_wallet(
     current_user: Annotated[models.User, Depends(deps.get_current_user)],
     session: Annotated[AsyncSession, Depends(models.get_session)],
 ):
-    db_wallet = models.DBWallet(**wallet.model_dump(), user_id=current_user.id)
+    # Create a dictionary from the wallet model and remove 'user_id'
+    wallet_data = wallet.model_dump(exclude={"user_id"})
+    
+    # Create an instance of DBWallet with the cleaned data and add the user_id manually
+    db_wallet = models.DBWallet(**wallet_data, user_id=current_user.id)
+    
     session.add(db_wallet)
     await session.commit()
     await session.refresh(db_wallet)
     return models.WalletRead.model_validate(db_wallet)
+
 
 @router.get("/{wallet_id}", response_model=models.WalletRead)
 async def read_wallet(wallet_id: int, session: Annotated[AsyncSession, Depends(models.get_session)]) -> models.WalletRead:
