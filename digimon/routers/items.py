@@ -9,7 +9,7 @@ import math
 
 from .. import models, deps
 
-router = APIRouter(prefix="/items")
+router = APIRouter(prefix="/items" , tags=["items"])
 
 SIZE_PER_PAGE = 50
 
@@ -37,13 +37,13 @@ async def create_item(
     session.add(db_item)
     await session.commit()
     await session.refresh(db_item)
-    return models.Item.from_orm(db_item)
+    return models.Item.model_validate(db_item)
 
 @router.get("/{item_id}")
 async def read_item(item_id: int, session: Annotated[AsyncSession, Depends(models.get_session)]) -> models.Item:
     db_item = await session.get(models.DBItem, item_id)
     if db_item:
-        return models.Item.from_orm(db_item)
+        return models.Item.model_validate(db_item)
     raise HTTPException(status_code=404, detail="Item not found")
 
 @router.put("/{item_id}")
@@ -62,7 +62,7 @@ async def update_item(
     await session.commit()
     await session.refresh(db_item)
 
-    return models.Item.from_orm(db_item)
+    return models.Item.model_validate(db_item)
 
 @router.delete("/{item_id}")
 async def delete_item(

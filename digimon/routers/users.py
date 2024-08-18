@@ -1,5 +1,3 @@
-# digimon/routers/users.py
-
 from fastapi import APIRouter, Depends, HTTPException
 from typing import Annotated
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -22,19 +20,27 @@ async def get_user(
     user = await session.get(models.DBUser, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    return models.User.from_orm(user)
+    return models.User.model_validate(user)  # Replaced from_orm with model_validate
 
 @router.post("/create")
 async def create_user(
     user_info: models.UserCreate,
     session: Annotated[AsyncSession, Depends(models.get_session)],
 ) -> models.User:
+    # Await the session.exec call and then use .first() to get the result
     existing_user = await session.exec(select(models.DBUser).where(models.DBUser.username == user_info.username))
+    existing_user = existing_user.first()  # Fetch the first result
+
     if existing_user:
         raise HTTPException(status_code=409, detail="Username already exists")
 
-    user = models.DBUser.from_orm(user_info)
+    # Use model_dump to create a DBUser instance
+    user = models.DBUser(**user_info.model_dump())
     await user.set_password(user_info.password)
     session.add(user)
     await session.commit()
-    return models.User.from_orm(user)
+    await session.refresh(user)  # Refresh to get the updated instance from the DB
+
+    return models.User.model_validate(user)  # Return the validated model
+
+

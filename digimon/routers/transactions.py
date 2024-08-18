@@ -5,7 +5,7 @@ from typing import Annotated
 from sqlmodel.ext.asyncio.session import AsyncSession
 from .. import models, deps
 
-router = APIRouter(prefix="/transactions")
+router = APIRouter(prefix="/transactions", tags=["transactions"])
 
 @router.post("", response_model=models.TransactionRead)
 async def create_transaction(
@@ -24,16 +24,16 @@ async def create_transaction(
     else:
         db_wallet.balance += transaction.amount
 
-    db_transaction = models.DBTransaction(**transaction.dict())
+    db_transaction = models.DBTransaction(**transaction.model_dump())
     session.add(db_transaction)
     session.add(db_wallet)
     await session.commit()
     await session.refresh(db_transaction)
-    return models.TransactionRead.from_orm(db_transaction)
+    return models.TransactionRead.model_validate(db_transaction)
 
 @router.get("/{transaction_id}", response_model=models.TransactionRead)
 async def read_transaction(transaction_id: int, session: Annotated[AsyncSession, Depends(models.get_session)]) -> models.TransactionRead:
     db_transaction = await session.get(models.DBTransaction, transaction_id)
     if not db_transaction:
         raise HTTPException(status_code=404, detail="Transaction not found")
-    return models.TransactionRead.from_orm(db_transaction)
+    return models.TransactionRead.model_validate(db_transaction)
