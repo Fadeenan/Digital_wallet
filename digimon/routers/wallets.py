@@ -49,3 +49,16 @@ async def update_wallet(
     await session.commit()
     await session.refresh(db_wallet)
     return models.WalletRead.model_validate(db_wallet)
+
+@router.delete("/{wallet_id}", response_model=dict)
+async def delete_wallet(
+    wallet_id: int,
+    session: Annotated[AsyncSession, Depends(models.get_session)],
+) -> dict:
+    db_wallet = await session.get(models.DBWallet, wallet_id)
+    if not db_wallet:
+        raise HTTPException(status_code=404, detail="Wallet not found")
+
+    await session.delete(db_wallet)
+    await session.commit()
+    return {"detail": "Wallet deleted successfully"}

@@ -5,7 +5,6 @@ from pydantic import BaseModel, EmailStr, ConfigDict
 from sqlmodel import SQLModel, Field
 
 # from passlib.context import CryptContext
-
 # pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 import bcrypt
 

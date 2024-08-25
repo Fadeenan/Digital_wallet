@@ -3,7 +3,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
 from typing import Annotated
 from starlette.status import HTTP_404_NOT_FOUND, HTTP_401_UNAUTHORIZED
-
+from fastapi import Path
 from .. import deps
 from .. import models
 
@@ -17,11 +17,10 @@ def get_me(current_user: models.User = Depends(deps.get_current_user)) -> models
 
 @router.get("/{user_id}")
 async def get_user(
-    user_id: str,
+    user_id: int,
     session: Annotated[AsyncSession, Depends(models.get_session)],
-    current_user: models.User = Depends(deps.get_current_user),
+    current_user: models.User = Depends(deps.get_current_user),  # Default argument placed last
 ) -> models.User:
-
     user = await session.get(models.DBUser, user_id)
     if not user:
         raise HTTPException(
@@ -29,6 +28,7 @@ async def get_user(
             detail="User not found",
         )
     return user
+
 
 
 @router.post("/create")
@@ -60,7 +60,7 @@ async def create_user(
 
 @router.put("/{user_id}/change_password")
 async def change_password(
-    user_id: str,
+    user_id: int,
     password_update: models.ChangedPassword,
     session: Annotated[AsyncSession, Depends(models.get_session)],
     current_user: models.User = Depends(deps.get_current_user),
@@ -89,15 +89,13 @@ async def change_password(
 
 @router.put("/{user_id}/update")
 async def update_user(
+    user_id: int,  # Non-default argument should come first
     request: Request,
-    user_id: str,
     user_update: models.UpdatedUser,
     session: Annotated[AsyncSession, Depends(models.get_session)],
-    current_user: models.User = Depends(deps.get_current_user),
+    current_user: models.User = Depends(deps.get_current_user),  # Default argument should come after non-default arguments
 ) -> models.User:
-
     db_user = await session.get(models.DBUser, user_id)
-
     if not db_user:
         raise HTTPException(
             status_code=HTTP_404_NOT_FOUND,
@@ -110,3 +108,24 @@ async def update_user(
     await session.refresh(db_user)
 
     return db_user
+
+
+@router.delete("/{user_id}/delete")
+async def delete_user(
+    user_id: int,
+    session: Annotated[AsyncSession, Depends(models.get_session)],
+    current_user: models.User = Depends(deps.get_current_user),
+) -> dict:
+
+    user = await session.get(models.DBUser, user_id)
+
+    if not user:
+        raise HTTPException(
+            status_code=HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    await session.delete(user)
+    await session.commit()
+
+    return {"detail": "User deleted successfully"}
