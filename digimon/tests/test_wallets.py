@@ -19,7 +19,15 @@ async def test_create_wallet(client: AsyncClient, token_user1: models.Token):
 @pytest.mark.asyncio
 async def test_read_wallet(client: AsyncClient, token_user1: models.Token):
     headers = {"Authorization": f"{token_user1.token_type} {token_user1.access_token}"}
-    response = await client.get("/wallets/1", headers=headers)  # Assuming wallet with ID 1 exists
+    
+    payload = {
+        "user_id": token_user1.user_id,
+        "balance": 100.0,
+    }
+    response = await client.post("/wallets", json=payload, headers=headers)
+    created_wallet = response.json()
+
+    response = await client.get(f"/wallets/{created_wallet['id']}", headers=headers)
     data = response.json()
 
     assert response.status_code == 200
@@ -55,12 +63,13 @@ async def test_delete_wallet(client: AsyncClient, token_user1: models.Token):
     created_wallet = response.json()
     
     response = await client.delete(f"/wallets/{created_wallet['id']}", headers=headers)
-    print(response.json())  # Print the response to inspect its content
+    print(response.json())  
     assert response.status_code == 200
+    assert response.json()["detail"] == "Wallet deleted successfully"
 
 @pytest.mark.asyncio
 async def test_wallet_not_found(client: AsyncClient, token_user1: models.Token):
     headers = {"Authorization": f"{token_user1.token_type} {token_user1.access_token}"}
-    response = await client.get("/wallets/9999", headers=headers)  # Assuming ID 9999 does not exist
+    response = await client.get("/wallets/9999", headers=headers)  
     assert response.status_code == 404
     assert response.json()["detail"] == "Wallet not found"

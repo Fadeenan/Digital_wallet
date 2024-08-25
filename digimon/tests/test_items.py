@@ -63,12 +63,11 @@ async def test_update_item(client: AsyncClient, token_user1: models.Token):
     response = await client.post("/items", json=payload, headers=headers)
     created_item = response.json()
 
-    # Ensure the update payload includes all necessary fields
     update_payload = {
         "name": "Updated Item Name",
         "description": "Updated description",
         "price": 12.99,
-        "merchant_id": created_item['merchant_id']  # Ensure merchant_id is included
+        "merchant_id": created_item['merchant_id']  
     }
     response = await client.put(f"/items/{created_item['id']}", json=update_payload, headers=headers)
 

@@ -1,4 +1,4 @@
-# digimon/tests/test_transactions.py
+
 
 import pytest
 from httpx import AsyncClient
@@ -8,14 +8,12 @@ from digimon import models
 async def test_create_transaction(client: AsyncClient, token_user1: models.Token, session: models.AsyncSession):
     headers = {"Authorization": f"{token_user1.token_type} {token_user1.access_token}"}
     
-    # Create a wallet for the transaction
     wallet_payload = {"user_id": token_user1.user_id, "balance": 100.0}
     wallet = models.DBWallet(**wallet_payload)
     session.add(wallet)
     await session.commit()
     await session.refresh(wallet)
     
-    # Create a transaction
     transaction_payload = {
         "wallet_id": wallet.id,
         "amount": 50.0,
@@ -34,7 +32,6 @@ async def test_create_transaction(client: AsyncClient, token_user1: models.Token
 async def test_read_transaction(client: AsyncClient, token_user1: models.Token, session: models.AsyncSession):
     headers = {"Authorization": f"{token_user1.token_type} {token_user1.access_token}"}
     
-    # Create a wallet and transaction for testing
     wallet_payload = {"user_id": token_user1.user_id, "balance": 100.0}
     wallet = models.DBWallet(**wallet_payload)
     session.add(wallet)
@@ -50,7 +47,6 @@ async def test_read_transaction(client: AsyncClient, token_user1: models.Token, 
     response = await client.post("/transactions", json=transaction_payload, headers=headers)
     created_transaction = response.json()
 
-    # Read the transaction
     response = await client.get(f"/transactions/{created_transaction['id']}", headers=headers)
     data = response.json()
 
@@ -129,7 +125,6 @@ async def test_update_transaction_insufficient_funds(client: AsyncClient, token_
 async def test_delete_transaction(client: AsyncClient, token_user1: models.Token, session: models.AsyncSession):
     headers = {"Authorization": f"{token_user1.token_type} {token_user1.access_token}"}
     
-    # Create a wallet and transaction for testing
     wallet_payload = {"user_id": token_user1.user_id, "balance": 100.0}
     wallet = models.DBWallet(**wallet_payload)
     session.add(wallet)
@@ -145,12 +140,10 @@ async def test_delete_transaction(client: AsyncClient, token_user1: models.Token
     response = await client.post("/transactions", json=transaction_payload, headers=headers)
     created_transaction = response.json()
 
-    # Delete the transaction
     response = await client.delete(f"/transactions/{created_transaction['id']}", headers=headers)
     assert response.status_code == 200
     assert response.json()["message"] == "Transaction deleted successfully"
 
-    # Verify that the transaction no longer exists
     response = await client.get(f"/transactions/{created_transaction['id']}", headers=headers)
     assert response.status_code == 404
     assert response.json()["detail"] == "Transaction not found"
@@ -159,7 +152,6 @@ async def test_delete_transaction(client: AsyncClient, token_user1: models.Token
 async def test_delete_transaction_not_found(client: AsyncClient, token_user1: models.Token):
     headers = {"Authorization": f"{token_user1.token_type} {token_user1.access_token}"}
 
-    # Attempt to delete a non-existing transaction
-    response = await client.delete("/transactions/9999", headers=headers)  # Assuming ID 9999 does not exist
+    response = await client.delete("/transactions/9999", headers=headers)  
     assert response.status_code == 404
     assert response.json()["detail"] == "Transaction not found"

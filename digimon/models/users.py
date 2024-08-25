@@ -1,13 +1,8 @@
 import datetime
-
 import pydantic
 from pydantic import BaseModel, EmailStr, ConfigDict
 from sqlmodel import SQLModel, Field
-
-# from passlib.context import CryptContext
-# pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 import bcrypt
-
 
 class BaseUser(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
@@ -15,7 +10,6 @@ class BaseUser(BaseModel):
     username: str = pydantic.Field(json_schema_extra=dict(example="admin"))
     first_name: str = pydantic.Field(json_schema_extra=dict(example="Firstname"))
     last_name: str = pydantic.Field(json_schema_extra=dict(example="Lastname"))
-
 
 class User(BaseUser):
     id: int
@@ -26,41 +20,33 @@ class User(BaseUser):
         json_schema_extra=dict(example="2023-01-01T00:00:00.000000"), default=None
     )
 
-
 class ReferenceUser(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
     username: str
     first_name: str
     last_name: str
 
-
 class UserList(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
     users: list[User]
-
 
 class Login(BaseModel):
     email: EmailStr
     password: str
 
-
 class ChangedPassword(BaseModel):
     current_password: str
     new_password: str
-
 
 class ResetedPassword(BaseModel):
     email: EmailStr
     citizen_id: str
 
-
 class RegisteredUser(BaseUser):
     password: str = pydantic.Field(json_schema_extra=dict(example="password"))
 
-
 class UpdatedUser(BaseUser):
-    roles: list[str]
-
+    pass  # Remove the roles field
 
 class Token(BaseModel):
     access_token: str
@@ -72,11 +58,9 @@ class Token(BaseModel):
     issued_at: datetime.datetime
     user_id: int
 
-
 class ChangedPasswordUser(BaseModel):
     current_password: str
     new_password: str
-
 
 class DBUser(BaseUser, SQLModel, table=True):
     __tablename__ = "users"
@@ -87,12 +71,6 @@ class DBUser(BaseUser, SQLModel, table=True):
     register_date: datetime.datetime = Field(default_factory=datetime.datetime.now)
     updated_date: datetime.datetime = Field(default_factory=datetime.datetime.now)
     last_login_date: datetime.datetime | None = Field(default=None)
-
-    async def has_roles(self, roles):
-        for role in roles:
-            if role in self.roles:
-                return True
-        return False
 
     async def get_encrypted_password(self, plain_password):
         return bcrypt.hashpw(

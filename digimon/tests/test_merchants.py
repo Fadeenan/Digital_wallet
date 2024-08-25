@@ -80,6 +80,6 @@ async def test_delete_merchant(client: AsyncClient, token_user1: models.Token):
 @pytest.mark.asyncio
 async def test_merchant_not_found(client: AsyncClient, token_user1: models.Token):
     headers = {"Authorization": f"{token_user1.token_type} {token_user1.access_token}"}
-    response = await client.get("/merchants/9999", headers=headers)  # Assuming ID 9999 does not exist
+    response = await client.get("/merchants/9999", headers=headers)  
     assert response.status_code == 404
     assert response.json()["detail"] == "Merchant not found"
